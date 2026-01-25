@@ -17,12 +17,33 @@ exports.makeConsole = function(id, sandboxedFunctionWrapper) {
                     self['console']['log'].apply(console, arguments);
                 }
 
-                messages[id].push(
-                _.map(arguments, (i) => {
-                    if(i && i.toString) return i.toString();
-                    if(typeof i === 'undefined') return 'undefined';
-                    return JSON.stringify(i);
-                }).join(' '));
+                messages[id].push({
+                    message: _.map(arguments, (i) => {
+                        if(i && i.toString) return i.toString();
+                        if(typeof i === 'undefined') return 'undefined';
+                        return JSON.stringify(i);
+                    }).join(' '),
+                    escape: true
+                });
+            })
+        },
+        logUnsafe: {
+            writable: true,
+            configurable: true,
+            value: sandboxedFunctionWrapper(function() {
+
+                if(typeof self != 'undefined' && self.navigator.userAgent) {
+                    self['console']['log'].apply(console, arguments);
+                }
+
+                messages[id].push({
+                    message: _.map(arguments, (i) => {
+                        if(i && i.toString) return i.toString();
+                        if(typeof i === 'undefined') return 'undefined';
+                        return JSON.stringify(i);
+                    }).join(' '),
+                    escape: false
+                });
             })
         },
         commandResult: {
