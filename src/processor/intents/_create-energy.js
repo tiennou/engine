@@ -40,13 +40,14 @@ module.exports = function(x, y, room, amount, resourceType, scope) {
         }
         else {
             const obj = {
+                _id: undefined,
                 type: 'energy',
                 x, y,
                 room: room,
                 [resourceType]: amount,
                 resourceType
             };
-            obj._id = bulk.insert(obj);
+            obj._id = "" + bulk.insert(obj);
             roomObjects[obj._id] = obj;
         }
     }
