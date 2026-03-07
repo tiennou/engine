@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@screeps/pathfinding": "^0.4.17",
-    "bulk-require": "^0.2.1",
+    "bulk-require": "1.0.1",
     "cross-env": "^5.2.0",
     "lodash": "3.10.1",
     "q": "^1.0.1"
@@ -28,7 +28,7 @@
     "gulp-plumber": "^1.1.0",
     "gulp-sourcemaps": "^2.6.0",
     "gulp-watch": "^4.3.11",
-    "jasmine": "^3.3.0"
+    "jasmine": "3.99.0"
   },
   "license": "ISC",
   "author": "Artem Chivchalov <contact@screeps.com>",
