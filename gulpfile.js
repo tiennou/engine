@@ -24,9 +24,7 @@ var escapeContent = function(content) {
 };
 
 var run = function (watched, babelOpts) {
-
-
-    (watched ?
+    return (watched ?
         watch(paths.src.src, {silent: false}) :
         gulp.src(paths.src.src))
         .pipe(plumber())
@@ -39,18 +37,18 @@ var run = function (watched, babelOpts) {
 
 gulp.task('watch', function () {
     run(false);
-    run(true);
+    return run(true);
 });
 
 gulp.task('default', function () {
-    run(false);
+    return run(false);
 });
 
 gulp.task('frontend', function () {
-    run(false, {presets: ['es2015']});
+    return run(false, {presets: ['es2015']});
 });
 
 gulp.task('frontend-watch', function () {
     run(false, {presets: ['es2015']});
-    run(true, {presets: ['es2015']});
+    return run(true, {presets: ['es2015']});
 });
