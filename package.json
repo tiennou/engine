@@ -30,9 +30,6 @@
     "gulp-watch": "^4.3.11",
     "jasmine": "3.99.0"
   },
-  "publishConfig": {
-    "tag": "beta"
-  },
   "license": "ISC",
   "author": "Artem Chivchalov <contact@screeps.com>",
   "repository": {
