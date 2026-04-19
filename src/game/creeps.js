@@ -860,6 +860,9 @@ exports.make = function(_runtimeData, _intents, _register, _globals) {
         if(!_hasActiveBodypart(this.body, C.CLAIM)) {
             return C.ERR_NO_BODYPART;
         }
+        if(runtimeData.user.shardAccess === false) {
+            return C.ERR_ACCESS_DENIED;
+        }
         if(!target.pos.isNearTo(this.pos)) {
             return C.ERR_NOT_IN_RANGE;
         }
@@ -927,6 +930,9 @@ exports.make = function(_runtimeData, _intents, _register, _globals) {
         if(!_hasActiveBodypart(this.body, C.WORK)) {
             return C.ERR_NO_BODYPART;
         }
+        if(runtimeData.user.shardAccess === false) {
+            return C.ERR_ACCESS_DENIED;
+        }
         if(!this.carry.energy) {
             return C.ERR_NOT_ENOUGH_RESOURCES;
         }
@@ -979,7 +985,9 @@ exports.make = function(_runtimeData, _intents, _register, _globals) {
         if(!_hasActiveBodypart(this.body, C.CLAIM)) {
             return C.ERR_NO_BODYPART;
         }
-
+        if(runtimeData.user.shardAccess === false) {
+            return C.ERR_ACCESS_DENIED;
+        }
 
         intents.set(this.id, 'reserveController', {id: target.id});
         return C.OK;
