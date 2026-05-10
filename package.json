@@ -9,8 +9,7 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "cross-env DRIVER_MODULE=@screeps/driver jasmine",
-    "prepublish": "gulp",
-    "postinstall": "gulp"
+    "prepublishOnly": "gulp"
   },
   "dependencies": {
     "@screeps/pathfinding": "^0.4.17",
