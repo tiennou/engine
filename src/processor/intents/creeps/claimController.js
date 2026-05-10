@@ -34,6 +34,10 @@ module.exports = function(object, intent, {roomObjects, bulk, bulkUsers, users})
     let user = users[object.user],
         claimedRooms = user.rooms ? user.rooms.length : 0;
 
+    if(user.shardAccess === false) {
+        return;
+    }
+
     if(user.gcl < utils.calcNeededGcl(claimedRooms + 1)) {
         return;
     }

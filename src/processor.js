@@ -17,6 +17,26 @@ function processRoom(roomId, {intents, roomObjects, users, roomTerrain, gameTime
 
     return q.when().then(() => {
 
+        if (gameTime > 0) {
+            var historyPayload = {};
+            _.forEach(roomObjects, (object) => {
+                if (!object || object.type === 'flag') {
+                    return;
+                }
+                if (object.type === 'creep' || object.type === 'powerCreep') {
+                    var clone = JSON.parse(JSON.stringify(object));
+                    clone._id = '' + object._id;
+                    if (clone.actionLog && clone.actionLog.say && !clone.actionLog.say.isPublic) {
+                        delete clone.actionLog.say;
+                    }
+                    historyPayload[clone._id] = clone;
+                } else {
+                    historyPayload[object._id] = object;
+                }
+            });
+            saveRoomHistory(roomId, historyPayload, gameTime - 1);
+        }
+
         var bulk = driver.bulkObjectsWrite(),
             bulkUsers = driver.bulkUsersWrite(),
             bulkFlags = driver.bulkFlagsWrite(),
@@ -24,7 +44,6 @@ function processRoom(roomId, {intents, roomObjects, users, roomTerrain, gameTime
             oldObjects = {},
             hasNewbieWalls = false,
             stats = driver.getRoomStatsUpdater(roomId),
-            objectsToHistory = {},
             roomSpawns = [], roomExtensions = [], roomNukes = [], keepers = [], invaders = [], invaderCore = null,
             oldRoomInfo = _.clone(roomInfo);
 
@@ -422,20 +441,6 @@ function processRoom(roomId, {intents, roomObjects, users, roomTerrain, gameTime
                 }
             }
 
-            if (object.type != 'flag') {
-                objectsToHistory[object._id] = object;
-
-                if (object.type == 'creep' || object.type == 'powerCreep') {
-                    objectsToHistory[object._id] = JSON.parse(JSON.stringify(object));
-                    objectsToHistory[object._id]._id = "" + object._id;
-                    delete objectsToHistory[object._id]._actionLog;
-                    delete objectsToHistory[object._id]._ticksToLive;
-                    if (object.actionLog.say && !object.actionLog.say.isPublic) {
-                        delete objectsToHistory[object._id].actionLog.say;
-                    }
-                }
-            }
-
             if (object.type in C.CONTROLLER_STRUCTURES) {
                 (ownedObjects[object.type] = ownedObjects[object.type] || []).push(object)
             }
@@ -509,7 +514,6 @@ function processRoom(roomId, {intents, roomObjects, users, roomTerrain, gameTime
 
         if(activateRoom) {
             driver.activateRoom(roomId);
-            saveRoomHistory(roomId, objectsToHistory, gameTime);
         }
 
         if(!_.isEqual(roomInfo, oldRoomInfo)) {
@@ -527,6 +531,8 @@ function processRoom(roomId, {intents, roomObjects, users, roomTerrain, gameTime
 
 function saveRoomHistory(roomId, objects, gameTime) {
 
+    var data = JSON.stringify(objects);
+
     return currentHistoryPromise.then(() => {
         var promise = q.when();
 
@@ -535,7 +541,6 @@ function saveRoomHistory(roomId, objects, gameTime) {
             promise = driver.history.upload(roomId, baseTime);
         }
 
-        var data = JSON.stringify(objects);
         currentHistoryPromise = promise.then(() => driver.history.saveTick(roomId, gameTime, data));
         return currentHistoryPromise;
     });

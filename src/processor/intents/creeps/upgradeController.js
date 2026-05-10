@@ -4,9 +4,13 @@ var _ = require('lodash'),
     C = driver.constants,
     config = require('../../../config');
 
-module.exports = function(object, intent, {roomObjects, bulk, bulkUsers, stats, gameTime, eventLog}) {
+module.exports = function(object, intent, {roomObjects, bulk, bulkUsers, stats, gameTime, eventLog, users}) {
 
     if(object.type != 'creep' || object.spawning || !object.store || object.store.energy <= 0) {
+        return;
+    }
+
+    if(users[object.user] && users[object.user].shardAccess === false) {
         return;
     }
 
