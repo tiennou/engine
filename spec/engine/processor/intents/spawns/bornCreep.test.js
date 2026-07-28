@@ -157,22 +157,23 @@ describe('_born-creep', () => {
         assert.strictEqual(scope.roomObjects[hostile._id], hostile);
     });
 
-    it('under safemode still treats a hostile creep as a birth obstacle', () => {
+    it('under safemode ignores hostile creeps and uses the preferred direction', () => {
         scope.roomController.safeMode = scope.gameTime + 5000;
+        spawn.spawning.directions = [1];
         const hostile = createHostile(1);
         movement.init(scope.roomObjects, scope.roomTerrain);
 
         const result = bornCreep(spawn, spawningCreep, scope);
 
-        // dir 1 blocked by hostile → born on dir 2 (would be dir 1 if safemode cleared the obstacle)
-        const expected = neighbor(2);
+        const expected = neighbor(1);
         assert.strictEqual(result, true);
+        assert.strictEqual(spawningCreep.spawning, false);
         assert.strictEqual(spawningCreep.x, expected.x);
         assert.strictEqual(spawningCreep.y, expected.y);
         assert.strictEqual(scope.roomObjects[hostile._id], hostile);
     });
 
-    it('under safemode still spawnstomps when fully surrounded by hostiles', () => {
+    it('under safemode does not spawnstomp when surrounded by hostiles', () => {
         scope.roomController.safeMode = scope.gameTime + 5000;
         const hostiles = [1, 2, 3, 4, 5, 6, 7, 8].map(d =>
             createHostile(d, { name: 'invader' + d }));
@@ -180,12 +181,28 @@ describe('_born-creep', () => {
 
         const result = bornCreep(spawn, spawningCreep, scope);
 
-        const stomped = hostiles[0];
+        const expected = neighbor(1);
         assert.strictEqual(result, true);
         assert.strictEqual(spawningCreep.spawning, false);
-        assert.strictEqual(spawningCreep.x, stomped.x);
-        assert.strictEqual(spawningCreep.y, stomped.y);
-        assert.strictEqual(scope.roomObjects[stomped._id], undefined);
+        assert.strictEqual(spawningCreep.x, expected.x);
+        assert.strictEqual(spawningCreep.y, expected.y);
+        hostiles.forEach(hostile => {
+            assert.strictEqual(scope.roomObjects[hostile._id], hostile);
+        });
+    });
+
+    it('under safemode still treats friendly creeps as birth obstacles', () => {
+        scope.roomController.safeMode = scope.gameTime + 5000;
+        spawn.spawning.directions = [1];
+        createFriendly(1);
+        movement.init(scope.roomObjects, scope.roomTerrain);
+
+        const result = bornCreep(spawn, spawningCreep, scope);
+
+        assert.strictEqual(result, false);
+        assert.strictEqual(spawningCreep.spawning, true);
+        assert.strictEqual(spawningCreep.x, SPAWN_X);
+        assert.strictEqual(spawningCreep.y, SPAWN_Y);
     });
 
     it('under safemode still treats structures as birth obstacles', () => {
