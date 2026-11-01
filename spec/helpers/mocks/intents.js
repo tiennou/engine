@@ -7,7 +7,11 @@ exports.scope = {
     bulk: require('./bulk')
 };
 
-exports.reset = ()=>{ exports.scope.bulk.reset(); exports.scope.roomObjects = {}};
+exports.reset = ()=>{
+    exports.scope.bulk.reset();
+    exports.scope.roomObjects = {};
+    exports.scope.eventLog = [];
+};
 exports.ticks = ()=> {
     _.forEach(exports.scope.roomObjects, (object => {
         if(object.type == 'creep' || object.type == 'powerCreep') {
