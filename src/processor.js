@@ -6,9 +6,10 @@ var q = require('q'),
     driver = utils.getDriver(),
     C = driver.constants,
     config = require('./config'),
-    fakeRuntime = require('./processor/common/fake-runtime');
+    fakeRuntime = require('./processor/common/fake-runtime'),
+    history = require('./history');
 
-var roomsQueue, usersQueue, lastRoomsStatsSaveTime = 0, currentHistoryPromise = q.when();
+var roomsQueue, usersQueue, lastRoomsStatsSaveTime = 0;
 
 const KEEPER_ID = "3";
 const INVADER_ID = "2";
@@ -17,6 +18,10 @@ function processRoom(roomId, {intents, roomObjects, users, roomTerrain, gameTime
 
     return q.when().then(() => {
 
+        if (gameTime > 0) {
+            history.saveRoomHistory(roomId, history.buildHistoryPayload(roomObjects), gameTime - 1);
+        }
+
         var bulk = driver.bulkObjectsWrite(),
             bulkUsers = driver.bulkUsersWrite(),
             bulkFlags = driver.bulkFlagsWrite(),
@@ -24,7 +29,6 @@ function processRoom(roomId, {intents, roomObjects, users, roomTerrain, gameTime
             oldObjects = {},
             hasNewbieWalls = false,
             stats = driver.getRoomStatsUpdater(roomId),
-            objectsToHistory = {},
             roomSpawns = [], roomExtensions = [], roomNukes = [], keepers = [], invaders = [], invaderCore = null,
             oldRoomInfo = _.clone(roomInfo);
 
@@ -422,20 +426,6 @@ function processRoom(roomId, {intents, roomObjects, users, roomTerrain, gameTime
                 }
             }
 
-            if (object.type != 'flag') {
-                objectsToHistory[object._id] = object;
-
-                if (object.type == 'creep' || object.type == 'powerCreep') {
-                    objectsToHistory[object._id] = JSON.parse(JSON.stringify(object));
-                    objectsToHistory[object._id]._id = "" + object._id;
-                    delete objectsToHistory[object._id]._actionLog;
-                    delete objectsToHistory[object._id]._ticksToLive;
-                    if (object.actionLog.say && !object.actionLog.say.isPublic) {
-                        delete objectsToHistory[object._id].actionLog.say;
-                    }
-                }
-            }
-
             if (object.type in C.CONTROLLER_STRUCTURES) {
                 (ownedObjects[object.type] = ownedObjects[object.type] || []).push(object)
             }
@@ -509,7 +499,6 @@ function processRoom(roomId, {intents, roomObjects, users, roomTerrain, gameTime
 
         if(activateRoom) {
             driver.activateRoom(roomId);
-            saveRoomHistory(roomId, objectsToHistory, gameTime);
         }
 
         if(!_.isEqual(roomInfo, oldRoomInfo)) {
@@ -524,23 +513,6 @@ function processRoom(roomId, {intents, roomObjects, users, roomTerrain, gameTime
         return q.all(resultPromises);
     });
 }
-
-function saveRoomHistory(roomId, objects, gameTime) {
-
-    return currentHistoryPromise.then(() => {
-        var promise = q.when();
-
-        if (!(gameTime % driver.config.historyChunkSize)) {
-            var baseTime = Math.floor((gameTime - 1) / driver.config.historyChunkSize) * driver.config.historyChunkSize;
-            promise = driver.history.upload(roomId, baseTime);
-        }
-
-        var data = JSON.stringify(objects);
-        currentHistoryPromise = promise.then(() => driver.history.saveTick(roomId, gameTime, data));
-        return currentHistoryPromise;
-    });
-}
-
 
 driver.connect('processor')
     .then(() => driver.queue.create('rooms', 'read'))
