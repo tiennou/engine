@@ -28,8 +28,13 @@ exports.constants = {
         'condensate', 'concentrate', 'extract', 'spirit', 'emanation', 'essence'
     ],
     LAB_MINERAL_CAPACITY: 3000,
+    EVENT_OBJECT_DESTROYED: 2,
+    EVENT_ATTACK_TYPE_MELEE: 1,
+    EVENT_ATTACK_TYPE_NUKE: 6,
     EVENT_EXIT: 10,
     EVENT_ENTER: 13,
+    RUIN_DECAY: 500,
+    RUIN_DECAY_STRUCTURES: {},
     EVENT_TRANSFER: 12,
     OBSTACLE_OBJECT_TYPES: [
         'spawn', 'creep', 'powerCreep', 'source', 'mineral', 'deposit',

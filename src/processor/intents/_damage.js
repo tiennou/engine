@@ -47,8 +47,6 @@ module.exports = function(object, target, damage, attackType, scope) {
         if (target.type != 'creep' && target.type != 'powerCreep') {
 
             require('./structures/_destroy')(target, scope, attackType);
-
-            eventLog.push({event: C.EVENT_OBJECT_DESTROYED, objectId: target._id, data: { type: target.type }});
         }
     }
     else {

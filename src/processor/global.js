@@ -49,7 +49,7 @@ module.exports = (processedRooms) => {
         });
 
         powerProcessor({userIntents, usersById, roomObjectsByType, userPowerCreeps, gameTime,
-            bulkObjects, bulkUsers, bulkUsersPowerCreeps, shardName});
+            bulkObjects, bulkUsers, bulkUsersPowerCreeps, shardName, roomEvents: eventsByRoom});
 
         marketProcessor({orders, userIntents, usersById, gameTime, roomObjectsByType, bulkObjects, bulkUsers, bulkTransactions,
             bulkUsersMoney, bulkUsersResources, bulkMarketOrders, bulkMarketIntershardOrders});
