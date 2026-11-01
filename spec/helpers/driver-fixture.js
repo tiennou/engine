@@ -29,6 +29,7 @@ exports.constants = {
     ],
     LAB_MINERAL_CAPACITY: 3000,
     EVENT_EXIT: 10,
+    EVENT_ENTER: 13,
     EVENT_TRANSFER: 12,
     OBSTACLE_OBJECT_TYPES: [
         'spawn', 'creep', 'powerCreep', 'source', 'mineral', 'deposit',

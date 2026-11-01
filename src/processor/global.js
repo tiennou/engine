@@ -4,9 +4,10 @@ var q = require('q'),
     driver = utils.getDriver(),
     C = driver.constants,
     marketProcessor = require('./global-intents/market'),
-    powerProcessor = require('./global-intents/power');
+    powerProcessor = require('./global-intents/power'),
+    roomEvents = require('./room-events');
 
-module.exports = () => {
+module.exports = (processedRooms) => {
 
     return driver.getInterRoom().then((data) => {
         if(!data) {
@@ -26,7 +27,8 @@ module.exports = () => {
             bulkMarketIntershardOrders = driver.bulkMarketIntershardOrders(),
             activateRooms = {},
             usersById = _.indexBy(users, '_id'),
-            roomObjectsByType = _.groupBy(roomObjects, 'type');
+            roomObjectsByType = _.groupBy(roomObjects, 'type'),
+            eventsByRoom = {};
 
         // creeps
 
@@ -39,6 +41,10 @@ module.exports = () => {
             }
             activateRooms[creep.interRoom.room] = true;
 
+            var arrived = creep.interRoom.room;
+            eventsByRoom[arrived] = eventsByRoom[arrived] || [];
+            eventsByRoom[arrived].push(roomEvents.enterEvent(creep));
+
             bulkObjects.update(creep, {room: creep.interRoom.room, x: creep.interRoom.x, y: creep.interRoom.y, interRoom: null});
         });
 
@@ -47,6 +53,9 @@ module.exports = () => {
 
         marketProcessor({orders, userIntents, usersById, gameTime, roomObjectsByType, bulkObjects, bulkUsers, bulkTransactions,
             bulkUsersMoney, bulkUsersResources, bulkMarketOrders, bulkMarketIntershardOrders});
+
+        var eventWrites = roomEvents.writesForRooms(eventsByRoom, processedRooms).map(write =>
+            driver.mergeRoomEventLog(write.roomId, write.events, write.replace));
 
         return q.all([
             bulkObjects.execute(),
@@ -59,7 +68,7 @@ module.exports = () => {
             bulkUsersResources.execute(),
             bulkUsersPowerCreeps.execute(),
             driver.clearGlobalIntents()
-        ]);
+        ].concat(eventWrites));
     });
 };
 

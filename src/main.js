@@ -62,7 +62,7 @@ function loop() {
         .then(() => {
             stage = 'global';
             driver.config.emit('mainLoopStage',stage);
-            return require('./processor/global')();
+            return require('./processor/global')(processedRooms);
         })
         .then(() => {
             stage = 'commit2';
