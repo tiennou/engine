@@ -107,7 +107,7 @@ module.exports = function(object, intent, scope) {
 
             extractor._cooldown = C.EXTRACTOR_COOLDOWN;
 
-            eventLog.push({event: C.EVENT_HARVEST, objectId: object._id, data: {targetId: target._id, amount: harvestAmount}});
+            eventLog.push({event: C.EVENT_HARVEST, objectId: object._id, data: {targetId: target._id, amount}});
         }
     }
 
@@ -136,5 +136,9 @@ module.exports = function(object, intent, scope) {
             target._cooldown = cooldown;
         }
         bulk.update(target, {decayTime: C.DEPOSIT_DECAY_TIME + gameTime});
+
+        if(amount) {
+            eventLog.push({event: C.EVENT_HARVEST, objectId: object._id, data: {targetId: target._id, amount}});
+        }
     }
 };

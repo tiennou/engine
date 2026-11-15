@@ -3,7 +3,7 @@ var _ = require('lodash'),
     driver = utils.getDriver(),
     C = driver.constants;
 
-module.exports = function(object, {roomObjects, bulkObjects, bulkUsersPowerCreeps, gameTime}) {
+module.exports = function(object, {roomObjects, bulkObjects, bulkUsersPowerCreeps, gameTime, roomEvents}) {
 
     let tombstone = {
         type: 'tombstone',
@@ -56,5 +56,11 @@ module.exports = function(object, {roomObjects, bulkObjects, bulkUsersPowerCreep
         shard: null,
         spawnCooldownTime: Date.now() + C.POWER_CREEP_SPAWN_COOLDOWN,
         ageTime: undefined,
+    });
+
+    (roomEvents[object.room] = roomEvents[object.room] || []).push({
+        event: C.EVENT_OBJECT_DESTROYED,
+        objectId: object._id,
+        data: {type: 'powerCreep'}
     });
 };

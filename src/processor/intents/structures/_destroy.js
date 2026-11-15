@@ -4,7 +4,7 @@ const _ = require('lodash'),
     C = driver.constants;
 
 module.exports = function(object, scope, attackType) {
-    const {gameTime, bulk, roomObjects} = scope;
+    const {gameTime, bulk, roomObjects, eventLog} = scope;
 
     if(object.type == 'spawn' && object.spawning) {
         const spawning = _.find(roomObjects, {user: object.user, name: object.spawning.name});
@@ -51,4 +51,6 @@ module.exports = function(object, scope, attackType) {
 
     bulk.remove(object._id);
     delete roomObjects[object._id];
+
+    eventLog.push({event: C.EVENT_OBJECT_DESTROYED, objectId: object._id, data: {type: object.type}});
 };
