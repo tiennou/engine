@@ -5,7 +5,11 @@ let utils = require('../utils');
 let driver = utils.getRuntimeDriver();
 let C = driver.constants;
 
+let currentRegister;
+
 exports.make = function(runtimeData, intents, register, globals) {
+
+    currentRegister = register;
 
     driver.pathFinder.make(globals);
 
@@ -68,9 +72,8 @@ exports.make = function(runtimeData, intents, register, globals) {
             enumerable: true,
             value: register.wrapFn(function (isActive) {
                 if (!isActive) {
-                    register.deprecated('`PathFinder.use` is considered deprecated and will be removed soon.');
+                    currentRegister.deprecated('`PathFinder.use(false)` is no longer supported.');
                 }
-                register._useNewPathFinder = !!isActive;
             })
         }
     });
