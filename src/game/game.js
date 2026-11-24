@@ -65,7 +65,6 @@
         }
 
         var register = {
-            _useNewPathFinder: true,
             _objects: {},
             byRoom: {},
             findCache: {},
