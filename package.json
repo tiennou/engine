@@ -9,7 +9,7 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "cross-env DRIVER_MODULE=../spec/helpers/driver-fixture node --test",
-    "prepublish": "gulp"
+    "prepare": "gulp"
   },
   "dependencies": {
     "bulk-require": "1.0.1",
