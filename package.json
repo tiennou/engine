@@ -12,7 +12,6 @@
     "prepublish": "gulp"
   },
   "dependencies": {
-    "@screeps/pathfinding": "^0.4.17",
     "bulk-require": "1.0.1",
     "cross-env": "^5.2.0",
     "lodash": "3.10.1",

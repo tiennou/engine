@@ -1,160 +1,18 @@
 var _ = require('lodash'),
     utils = require('./../utils'),
     driver = utils.getRuntimeDriver(),
-    C = driver.constants,
-    pathfinding = require('@screeps/pathfinding');
+    C = driver.constants;
 
-var abs = Math.abs, min = Math.min, max = Math.max;
+var abs = Math.abs, max = Math.max;
 
 var runtimeData, intents, register, globals;
 
-var positionsSetCacheCounter, createdFlagNames, createdSpawnNames, privateStore, createdConstructionSites;
+var createdFlagNames, createdSpawnNames, privateStore, createdConstructionSites;
 
 let TerrainConstructor    = null;
 let TerrainConstructorSet = null;
 
-function getPathfinder(id, opts) {
-    opts = opts || {};
-    _.defaults(opts, {maxOps: 2000, heuristicWeight: 1});
-    var key = `${opts.maxOps},${opts.heuristicWeight}`;
-
-    if(!privateStore[id].pfFinders[key]) {
-        privateStore[id].pfFinders[key] = new pathfinding.AStarFinder({
-            diagonalMovement: 1,
-            maxOpsLimit: opts.maxOps,
-            heuristic: pathfinding.Heuristic.chebyshev,
-            weight: opts.heuristicWeight
-        });
-    }
-    return privateStore[id].pfFinders[key];
-}
-
-function makePathfindingGrid(id, opts, endNodesKey) {
-
-    opts = opts || {};
-
-    var rows = new Array(50),
-    obstacleTypes = _.clone(C.OBSTACLE_OBJECT_TYPES);
-
-    if(opts.ignoreDestructibleStructures) {
-        obstacleTypes = _.without(obstacleTypes, 'constructedWall','spawn','extension', 'link','storage','observer','tower','powerBank','powerSpawn','lab','terminal');
-    }
-    if(opts.ignoreCreeps) {
-        obstacleTypes = _.without(obstacleTypes, 'creep', 'powerCreep');
-    }
-
-    for(var y=0; y<50; y++) {
-        rows[y] = new Array(50);
-        for(var x=0; x<50; x++) {
-            rows[y][x] = x == 0 || y == 0 || x == 49 || y == 49 ? 11 : 2;
-            //var terrainCode = register.terrainByRoom.spatial[id][y][x];
-            var terrainCode = runtimeData.staticTerrainData[id][y*50+x];
-            if(terrainCode & C.TERRAIN_MASK_WALL) {
-                rows[y][x] = 0;
-            }
-            if ((terrainCode & C.TERRAIN_MASK_SWAMP) && rows[y][x] == 2) {
-                rows[y][x] = 10;
-            }
-        }
-    }
-
-    register.objectsByRoomKeys[id].forEach((key) => {
-        var object = register.objectsByRoom[id][key];
-
-        if (_.contains(obstacleTypes, object.type) ||
-        !opts.ignoreDestructibleStructures && object.type == 'rampart' && !object.isPublic && object.user != runtimeData.user._id ||
-        !opts.ignoreDestructibleStructures && object.type == 'constructionSite' && object.user == runtimeData.user._id && _.contains(C.OBSTACLE_OBJECT_TYPES, object.structureType)) {
-
-            rows[object.y][object.x] = 0;
-        }
-
-        if (object.type == 'road' && rows[object.y][object.x] > 0) {
-            rows[object.y][object.x] = 1;
-        }
-    });
-
-
-    if(opts.ignore) {
-        if(!_.isArray(opts.ignore)) {
-            throw new Error('option `ignore` is not an array');
-        }
-        _.forEach(opts.ignore, (i, key) => {
-            if(!i) {
-                return;
-            }
-            if(i.pos) {
-                rows[i.pos.y][i.pos.x] = rows[i.pos.y][i.pos.x] > 2 ? 2 : rows[i.pos.y][i.pos.x];
-            }
-            if(_.isObject(i) && !_.isUndefined(i.x) && !(i instanceof globals.RoomPosition)) {
-                opts.ignore[key] = new globals.RoomPosition(i.x, i.y, id);
-            }
-            if(!_.isUndefined(i.x)) {
-                rows[i.y][i.x] = rows[i.y][i.x] > 2 ? 2 : rows[i.y][i.x];
-            }
-        });
-    }
-
-    if(opts.avoid) {
-        if(!_.isArray(opts.avoid)) {
-            throw new Error('option `avoid` is not an array');
-        }
-        _.forEach(opts.avoid, (i, key) => {
-            if(!i) {
-                return;
-            }
-            if(i.pos) {
-                rows[i.pos.y][i.pos.x] = 0;
-            }
-            if(_.isObject(i) && !_.isUndefined(i.x) && !(i instanceof globals.RoomPosition)) {
-                opts.avoid[key] = new globals.RoomPosition(i.x, i.y, id);
-            }
-            if(!_.isUndefined(i.x)) {
-                rows[i.y][i.x] = 0;
-            }
-        });
-    }
-    if(endNodesKey) {
-        _.forEach(privateStore[id].pfEndNodes[endNodesKey], (i) => {
-            if(!_.isUndefined(i.x)) {
-                rows[i.y][i.x] = 999;
-            }
-            else if(!_.isUndefined(i.pos)) {
-                rows[i.pos.y][i.pos.x] = 999;
-            }
-        });
-    }
-
-    return new pathfinding.Grid(50, 50, rows);
-}
-
-function getPathfindingGrid(id, opts, endNodesKey) {
-
-    var gridName = 'grid';
-
-    opts = opts || {};
-
-    if(opts.ignoreCreeps) {
-        gridName += '_ignoreCreeps'
-    }
-    if(opts.ignoreDestructibleStructures) {
-        gridName += '_ignoreDestructibleStructures'
-    }
-    if(_.isNumber(endNodesKey)) {
-        gridName += '_endNodes'+endNodesKey;
-    }
-    if(opts.avoid) {
-        gridName += '_avoid'+privateStore[id].positionsSetCache.key(opts.avoid);
-    }
-    if(opts.ignore) {
-        gridName += '_ignore'+privateStore[id].positionsSetCache.key(opts.ignore);
-    }
-
-    if(!privateStore[id].pfGrid[gridName]) privateStore[id].pfGrid[gridName] = makePathfindingGrid(id, opts, endNodesKey);
-
-    return privateStore[id].pfGrid[gridName].clone();
-}
-
-function makePathfindingGrid2(id, opts) {
+function makePathfindingGrid(id, opts) {
 
     opts = opts || {};
 
@@ -195,13 +53,13 @@ function makePathfindingGrid2(id, opts) {
     return costs;
 }
 
-function getPathfindingGrid2(id, opts) {
+function getPathfindingGrid(id, opts) {
 
     if(!privateStore[id]) {
         return new globals.PathFinder.CostMatrix();
     }
 
-    var gridName = 'grid2';
+    var gridName = 'grid';
 
     opts = opts || {};
 
@@ -215,12 +73,12 @@ function getPathfindingGrid2(id, opts) {
         gridName += '_ignoreRoads';
     }
 
-    if(!privateStore[id].pfGrid[gridName]) privateStore[id].pfGrid[gridName] = makePathfindingGrid2(id, opts);
+    if(!privateStore[id].pfGrid[gridName]) privateStore[id].pfGrid[gridName] = makePathfindingGrid(id, opts);
 
     return privateStore[id].pfGrid[gridName];
 }
 
-function _findPath2(id, fromPos, toPos, opts) {
+function _findPath(id, fromPos, toPos, opts) {
 
     opts = opts || {};
 
@@ -229,11 +87,11 @@ function _findPath2(id, fromPos, toPos, opts) {
     }
 
     if(opts.avoid) {
-        register.deprecated('`avoid` option cannot be used when `PathFinder.use()` is enabled. Use `costCallback` instead.');
+        register.deprecated('`avoid` option is no longer supported. Use `costCallback` instead.');
         opts.avoid = undefined;
     }
     if(opts.ignore) {
-        register.deprecated('`ignore` option cannot be used when `PathFinder.use()` is enabled. Use `costCallback` instead.');
+        register.deprecated('`ignore` option is no longer supported. Use `costCallback` instead.');
         opts.ignore = undefined;
     }
     if(opts.maxOps === undefined && (opts.maxRooms === undefined || opts.maxRooms > 1) && fromPos.roomName != toPos.roomName) {
@@ -241,7 +99,7 @@ function _findPath2(id, fromPos, toPos, opts) {
     }
     var searchOpts = {
         roomCallback: function(roomName) {
-            var costMatrix = getPathfindingGrid2(roomName, opts);
+            var costMatrix = getPathfindingGrid(roomName, opts);
             if(typeof opts.costCallback == 'function') {
                 costMatrix = costMatrix.clone();
                 var resultMatrix = opts.costCallback(roomName, costMatrix);
@@ -301,7 +159,7 @@ function _findPath2(id, fromPos, toPos, opts) {
     return resultPath;
 }
 
-function _findClosestByPath2(fromPos, objects, opts) {
+function _findClosestByPath(fromPos, objects, opts) {
 
     opts = opts || {};
 
@@ -329,15 +187,15 @@ function _findClosestByPath2(fromPos, objects, opts) {
     });
 
     if(opts.avoid) {
-        register.deprecated('`avoid` option cannot be used when `PathFinder.use()` is enabled. Use `costCallback` instead.');
+        register.deprecated('`avoid` option is no longer supported. Use `costCallback` instead.');
     }
     if(opts.ignore) {
-        register.deprecated('`ignore` option cannot be used when `PathFinder.use()` is enabled. Use `costCallback` instead.');
+        register.deprecated('`ignore` option is no longer supported. Use `costCallback` instead.');
     }
     var searchOpts = {
         roomCallback: function(roomName) {
             if(register.objectsByRoom[roomName]) {
-                var costMatrix = getPathfindingGrid2(roomName, opts);
+                var costMatrix = getPathfindingGrid(roomName, opts);
                 if(typeof opts.costCallback == 'function') {
                     costMatrix = costMatrix.clone();
                     var resultMatrix = opts.costCallback(roomName, costMatrix);
@@ -380,7 +238,6 @@ exports.make = function(_runtimeData, _intents, _register, _globals) {
     register = _register;
     globals = _globals;
 
-    positionsSetCacheCounter = 1;
     createdFlagNames = [];
     createdSpawnNames = [];
     privateStore = {};
@@ -438,50 +295,6 @@ exports.make = function(_runtimeData, _intents, _register, _globals) {
 
         privateStore[id] = {
             pfGrid: {},
-            pfFinders: {},
-            pfEndNodes: {},
-            pfDijkstraFinder: new pathfinding.DijkstraFinder({diagonalMovement: 1}),
-            pathCache: {},
-            positionsSetCache: {
-
-                cache: {},
-
-                key(array) {
-
-                    if (!_.isArray(array)) {
-                        return 0;
-                    }
-
-                    var positionsArray = _.map(array, (i) => {
-                        if (i && i.pos) {
-                            return i.pos;
-                        }
-                        if(_.isObject(i) && !_.isUndefined(i.x) && !(i instanceof globals.RoomPosition)) {
-                            return new globals.RoomPosition(i.x, i.y, id);
-                        }
-                        return i;
-                    });
-
-                    var key = _.findKey(this.cache, (objects) => {
-                        return positionsArray.length == objects.length && _.every(positionsArray, (j) => _.any(objects, (object) => {
-                            if(!_.isObject(j) || !j.isEqualTo) {
-                                throw new Error('Invalid position '+j+', check your `opts` property');
-                            }
-                            return j.isEqualTo(object);
-                        }));
-                    });
-
-                    if (key === undefined) {
-                        key = positionsSetCacheCounter++;
-                        this.cache[key] = _.clone(array);
-                    }
-                    else {
-                        key = parseInt(key);
-                    }
-
-                    return key;
-                }
-            },
             lookTypeRegisters: {
                 creep: register.byRoom[id].creeps,
                 energy: register.byRoom[id].energy,
@@ -866,106 +679,7 @@ exports.make = function(_runtimeData, _intents, _register, _globals) {
             return opts.serialize ? '' : [];
         }
 
-        if(register._useNewPathFinder) {
-            return _findPath2(this.name, fromPos, toPos, opts);
-        }
-
-        var fromX = fromPos.x, fromY = fromPos.y,
-            path,
-            cacheKeySuffix = '';
-
-        opts = _.clone(opts || {});
-
-        if(opts.ignoreCreeps) {
-            cacheKeySuffix += '_ignoreCreeps'
-        }
-        if(opts.ignoreDestructibleStructures) {
-            cacheKeySuffix += '_ignoreDestructibleStructures'
-        }
-        if(opts.avoid) {
-            cacheKeySuffix += '_avoid'+privateStore[this.name].positionsSetCache.key(opts.avoid);
-        }
-        if(opts.ignore) {
-            cacheKeySuffix += '_ignore'+privateStore[this.name].positionsSetCache.key(opts.ignore);
-        }
-
-        if(_.isNumber(toPos)) {
-            if(!privateStore[this.name].pfEndNodes[toPos]) {
-                return opts.serialize ? '' : [];
-            }
-
-            var grid = getPathfindingGrid(this.name, opts, toPos);
-
-            path = privateStore[this.name].pfDijkstraFinder.findPath(fromX, fromY, -999, -999, grid);
-        }
-        else {
-
-            if(toPos.roomName != this.name) {
-                return opts.serialize ? '' : [];
-            }
-
-            var toX = toPos.x, toY = toPos.y,
-                cacheKey = `${fromX},${fromY},${toX},${toY}${cacheKeySuffix}`;
-
-            if(privateStore[this.name].pathCache[cacheKey]) {
-                return opts.serialize ? utils.serializePath(privateStore[this.name].pathCache[cacheKey]) : _.cloneDeep(privateStore[this.name].pathCache[cacheKey]);
-            }
-
-            if (fromX == toX && fromY == toY) {
-                return opts.serialize ? '' : [];
-            }
-            if (fromX < 0 || fromY < 0 || toX < 0 || toY < 0 ||
-                fromX >= 50 || fromY >= 50 || toX >= 50 || toY >= 50) {
-                return opts.serialize ? '' : [];
-            }
-
-            if (abs(fromX - toX) < 2 && abs(fromY - toY) < 2) {
-                var result = [{
-                    x: toX,
-                    y: toY,
-                    dx: toX - fromX,
-                    dy: toY - fromY,
-                    direction: utils.getDirection(toX - fromX, toY - fromY)
-                }];
-                return opts.serialize ? utils.serializePath(result) : result;
-            }
-
-            var grid = getPathfindingGrid(this.name, opts),
-                finder = getPathfinder(this.name, opts);
-
-            grid.setWalkableAt(toX, toY, true);
-            path = finder.findPath(fromX, fromY, toX, toY, grid);
-        }
-
-        path.splice(0,1);
-
-        var curX = fromX, curY = fromY;
-
-        var resultPath = _.map(path, (step) => {
-            var result = {
-                x: step[0],
-                y: step[1],
-                dx: step[0] - curX,
-                dy: step[1] - curY,
-                direction: utils.getDirection(step[0] - curX, step[1] - curY)
-            };
-
-            curX = result.x;
-            curY = result.y;
-            return result;
-        });
-
-        if(resultPath.length > 0) {
-            var lastStep = resultPath[resultPath.length-1],
-                cacheKey = `${fromX},${fromY},${lastStep.x},${lastStep.y}${cacheKeySuffix}`;
-            privateStore[this.name].pathCache[cacheKey] = _.cloneDeep(resultPath);
-        }
-
-        if(opts.serialize) {
-            return utils.serializePath(resultPath);
-        }
-
-        return resultPath;
+        return _findPath(this.name, fromPos, toPos, opts);
     });
 
     Room.prototype.getPositionAt = register.wrapFn(function(x,y) {
@@ -1094,37 +808,6 @@ exports.make = function(_runtimeData, _intents, _register, _globals) {
         intents.pushByName('room', 'createConstructionSite', intent);
 
         return C.OK;
-    });
-
-    Room.prototype.getEndNodes = register.wrapFn(function(type, opts) {
-        var key;
-
-        opts = opts || {};
-
-        if(_.isUndefined(type)) {
-            throw new Error('Find type cannot be undefined');
-        }
-
-        if(!opts.filter && _.isNumber(type)) {
-            key = type;
-        }
-        else {
-            if(_.isNumber(type)) {
-                type = this.find(type, opts);
-            }
-
-            key = privateStore[this.name].positionsSetCache.key(type);
-
-            privateStore[this.name].pfEndNodes[key] = privateStore[this.name].positionsSetCache.cache[key];
-        }
-
-        if(!privateStore[this.name].pfEndNodes[key]) {
-            privateStore[this.name].pfEndNodes[key] = _.clone(type);
-            if (_.isNumber(type)) {
-                privateStore[this.name].pfEndNodes[key] = this.find(type, opts);
-            }
-        }
-        return {key, objects: privateStore[this.name].pfEndNodes[key]};
     });
 
     Room.prototype.findExitTo = register.wrapFn(function(room) {
@@ -1409,20 +1092,7 @@ exports.makePos = function(_register) {
             throw new Error(`Could not access room ${this.roomName}`);
         }
 
-        if(roomName == this.roomName || register._useNewPathFinder) {
-            return room.findPath(this, new globals.RoomPosition(x,y,roomName), opts);
-        }
-        else {
-            var exitDir = room.findExitTo(roomName);
-            if(exitDir < 0) {
-                return [];
-            }
-            var exit = this.findClosestByPath(exitDir, opts);
-            if(!exit) {
-                return [];
-            }
-            return room.findPath(this, exit, opts);
-        }
+        return room.findPath(this, new globals.RoomPosition(x,y,roomName), opts);
 
     });
 
@@ -1440,79 +1110,7 @@ exports.makePos = function(_register) {
             return null;
         }
 
-        if(register._useNewPathFinder) {
-            return _findClosestByPath2(this, type, opts);
-        }
-
-        opts.serialize = false;
-
-        var result = null,
-            isNear,
-            endNodes = room.getEndNodes(type, opts);
-
-        if(!opts.algorithm) {
-
-            var minH, sumH = 0;
-
-            endNodes.objects.forEach((i) => {
-                var x = i.x, y = i.y, roomName = i.roomName;
-                if(i.pos) {
-                    x = i.pos.x;
-                    y = i.pos.y;
-                    roomName = i.pos.roomName;
-                }
-                var h = max(abs(this.x - x), abs(this.y - y));
-                if(_.isUndefined(minH) || minH > h) {
-                    minH = h;
-                }
-                sumH += h;
-            });
-
-            opts.algorithm = sumH > minH*10 ? 'dijkstra' : 'astar';
-        }
-
-        if(opts.algorithm == 'dijkstra') {
-
-            isNear = 1;
-
-            endNodes.objects.forEach((i) => {
-                var distance = this.isEqualTo(i) ? -1 :
-                    this.isNearTo(i) ? 0 : 1;
-                if(distance < isNear) {
-                    result = i;
-                    isNear = distance;
-                }
-            });
-
-            if(isNear == 1) {
-                var path = room.findPath(this, endNodes.key, opts);
-                if(path.length > 0) {
-                    var lastStep = path[path.length-1],
-                        lastStepPos = room.getPositionAt(lastStep.x, lastStep.y);
-                    result = _.find(endNodes.objects, (i) => lastStepPos.isEqualTo(i));
-                }
-            }
-        }
-
-        if(opts.algorithm == 'astar') {
-
-            endNodes.objects.forEach((i) => {
-
-                var path,
-                    distance = this.isEqualTo(i) ? -1 :
-                        this.isNearTo(i) ? 0 :
-                            (path = this.findPathTo(i, opts)) && path.length > 0 &&
-                            room.getPositionAt(path[path.length - 1].x, path[path.length - 1].y).isNearTo(i) ?
-                                path.length : undefined;
-
-                if ((_.isUndefined(isNear) || distance <= isNear) && !_.isUndefined(distance)) {
-                    isNear = distance;
-                    result = i;
-                }
-            });
-        }
-
-        return result;
+        return _findClosestByPath(this, type, opts);
     });
 
     RoomPosition.prototype.findInRange = register.wrapFn(function(type, range, opts) {
