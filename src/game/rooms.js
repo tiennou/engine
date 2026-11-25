@@ -1258,3 +1258,8 @@ exports.makePos = function(_register) {
 
     Object.defineProperty(globals, 'RoomObject', {enumerable: true, value: RoomObject});
 };
+
+exports.clear = function() {
+    runtimeData = intents = register = globals = null;
+    createdFlagNames = createdSpawnNames = privateStore = null;
+};
